@@ -1,0 +1,108 @@
+---
+# ── Playbook: Setup Minikube (Local Mac) ─────────────────────────
+# Installs Docker, Minikube and kubectl on your Mac via Homebrew.
+#
+# Run once on a fresh machine:
+#   ansible-playbook playbooks/setup-server.yml
+# ──────────────────────────────────────────────────────────────────
+
+- name: Setup Minikube on Local Mac
+  hosts: local
+  connection: local
+
+  tasks:
+
+    # ── Homebrew check ────────────────────────────────────────────
+    - name: Check Homebrew is installed
+      command: which brew
+      register: brew_check
+      failed_when: brew_check.rc != 0
+      changed_when: false
+
+    # ── Docker ────────────────────────────────────────────────────
+    - name: Check if Docker is already installed
+      command: docker --version
+      register: docker_check
+      ignore_errors: true
+      changed_when: false
+
+    - name: Install Docker Desktop via Homebrew (if not installed)
+      community.general.homebrew_cask:
+        name: docker
+        state: present
+      when: docker_check.rc != 0
+
+    - name: Wait for Docker to be available
+      command: docker info
+      register: docker_ready
+      retries: 10
+      delay: 5
+      until: docker_ready.rc == 0
+      changed_when: false
+
+    # ── kubectl ───────────────────────────────────────────────────
+    - name: Install kubectl via Homebrew
+      community.general.homebrew:
+        name: kubectl
+        state: present
+
+    # ── Minikube ──────────────────────────────────────────────────
+    - name: Install Minikube via Homebrew
+      community.general.homebrew:
+        name: minikube
+        state: present
+
+    - name: Start Minikube cluster
+      command: minikube start --driver=docker
+      register: minikube_start
+      changed_when: "'Starting' in minikube_start.stdout"
+
+    - name: Enable Minikube ingress addon
+      command: minikube addons enable ingress
+      changed_when: false
+
+    # ── Verify ────────────────────────────────────────────────────
+    - name: Check Minikube status
+      command: minikube status
+      register: minikube_status
+      changed_when: false
+
+    - name: Check kubectl nodes
+      command: kubectl get nodes
+      register: nodes
+      changed_when: false
+
+    # ── Helm ──────────────────────────────────────────────────────
+    - name: Install Helm via Homebrew
+      community.general.homebrew:
+        name: helm
+        state: present
+
+    - name: Add Prometheus community Helm repo
+      command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      changed_when: false
+
+    - name: Update Helm repos
+      command: helm repo update
+      changed_when: false
+
+    # ── Verify ────────────────────────────────────────────────────
+    - name: Check Minikube status
+      command: minikube status
+      register: minikube_status
+      changed_when: false
+
+    - name: Check kubectl nodes
+      command: kubectl get nodes
+      register: nodes
+      changed_when: false
+
+    - name: Print status
+      debug:
+        msg:
+          - "── Minikube ──────────────────────"
+          - "{{ minikube_status.stdout_lines }}"
+          - "── Nodes ─────────────────────────"
+          - "{{ nodes.stdout_lines }}"
+          - "── Helm ──────────────────────────"
+          - "Helm installed and repos updated ✅"

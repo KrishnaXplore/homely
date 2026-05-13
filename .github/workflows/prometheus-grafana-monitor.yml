@@ -1,0 +1,35 @@
+name: Prometheus & Grafana — Monitoring Note
+
+# ── NOTE ──────────────────────────────────────────────────────────
+# Prometheus + Grafana run inside Minikube (local).
+# They are deployed via Ansible — not GitHub Actions.
+#
+# To deploy monitoring locally:
+#   cd ansible
+#   ansible-playbook playbooks/monitoring.yml
+#
+# To access after deployment:
+#   Grafana    → minikube service monitoring-grafana -n monitoring
+#   Prometheus → kubectl port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090 -n monitoring
+#
+# Grafana login:
+#   Username: admin
+#   Password: homely@grafana2026
+# ──────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+
+jobs:
+  notice:
+    name: Prometheus + Grafana run in Minikube
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print instructions
+        run: |
+          echo "=================================================="
+          echo " Prometheus + Grafana run inside Minikube."
+          echo " Deploy via: ansible-playbook playbooks/monitoring.yml"
+          echo " Grafana: minikube service monitoring-grafana -n monitoring"
+          echo " Prometheus: kubectl port-forward ... 9090:9090 -n monitoring"
+          echo "=================================================="

@@ -1,0 +1,112 @@
+---
+# ── Playbook: Deploy Homely to Minikube ──────────────────────────
+# Builds Docker images inside Minikube and applies all k8s manifests.
+#
+# Run:
+#   ansible-playbook playbooks/deploy.yml
+# ──────────────────────────────────────────────────────────────────
+
+- name: Deploy Homely to Minikube
+  hosts: local
+  connection: local
+
+  vars:
+    project_root: "{{ playbook_dir }}/../.."
+    image_tag: latest
+
+  tasks:
+
+    # ── Point Docker to Minikube ──────────────────────────────────
+    - name: Configure shell to use Minikube Docker daemon
+      shell: eval $(minikube docker-env) && echo "MINIKUBE_DOCKER=true"
+      register: minikube_env
+      changed_when: false
+
+    # ── Build images inside Minikube ──────────────────────────────
+    - name: Build backend Docker image inside Minikube
+      shell: |
+        eval $(minikube docker-env)
+        docker build -t homely-backend:{{ image_tag }} {{ project_root }}/backend
+      register: backend_build
+
+    - name: Build frontend Docker image inside Minikube
+      shell: |
+        eval $(minikube docker-env)
+        docker build \
+          --build-arg VITE_API_URL=/api \
+          -t homely-frontend:{{ image_tag }} {{ project_root }}/frontend
+      register: frontend_build
+
+    - name: Print build results
+      debug:
+        msg:
+          - "Backend build: done"
+          - "Frontend build: done"
+
+    # ── Apply k8s manifests ───────────────────────────────────────
+    - name: Apply namespace
+      command: kubectl apply -f {{ project_root }}/k8s/namespace.yaml
+
+    - name: Apply configmap
+      command: kubectl apply -f {{ project_root }}/k8s/configmap.yaml
+
+    - name: Apply backend manifests
+      command: kubectl apply -f {{ project_root }}/k8s/backend/
+
+    - name: Apply frontend manifests
+      command: kubectl apply -f {{ project_root }}/k8s/frontend/
+
+    - name: Apply ingress
+      command: kubectl apply -f {{ project_root }}/k8s/ingress.yaml
+
+    # ── Patch images for Minikube (use local images) ─────────────
+    - name: Patch backend to use local image
+      command: >
+        kubectl set image deployment/homely-backend
+        backend=homely-backend:{{ image_tag }}
+        -n homely
+
+    - name: Patch frontend to use local image
+      command: >
+        kubectl set image deployment/homely-frontend
+        frontend=homely-frontend:{{ image_tag }}
+        -n homely
+
+    - name: Patch backend imagePullPolicy to Never
+      command: >
+        kubectl patch deployment homely-backend -n homely
+        --type=json
+        -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]'
+
+    - name: Patch frontend imagePullPolicy to Never
+      command: >
+        kubectl patch deployment homely-frontend -n homely
+        --type=json
+        -p='[{"op":"replace","path":"/spec/template/spec/containers/0/imagePullPolicy","value":"Never"}]'
+
+    # ── Wait for rollout ──────────────────────────────────────────
+    - name: Wait for backend to be ready
+      command: kubectl rollout status deployment/homely-backend -n homely --timeout=180s
+
+    - name: Wait for frontend to be ready
+      command: kubectl rollout status deployment/homely-frontend -n homely --timeout=180s
+
+    # ── Print access URL ──────────────────────────────────────────
+    - name: Get Minikube IP
+      command: minikube ip
+      register: minikube_ip
+      changed_when: false
+
+    - name: Get running pods
+      command: kubectl get pods -n homely
+      register: pods
+      changed_when: false
+
+    - name: Print access info
+      debug:
+        msg:
+          - "✅ Homely deployed to Minikube!"
+          - "── Pods ──────────────────────────"
+          - "{{ pods.stdout_lines }}"
+          - "── Access ────────────────────────"
+          - "Run: minikube service homely-frontend -n homely"

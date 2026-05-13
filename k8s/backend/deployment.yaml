@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homely-backend
+  namespace: homely
+  labels:
+    app: homely-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: homely-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: homely-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/krishnaxplore/homely-backend:IMAGE_TAG
+          ports:
+            - containerPort: 5002
+          envFrom:
+            - configMapRef:
+                name: homely-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: homely-secret
+                  key: JWT_SECRET
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: homely-secret
+                  key: MONGODB_URI
+          livenessProbe:
+            httpGet:
+              path: /api
+              port: 5002
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"

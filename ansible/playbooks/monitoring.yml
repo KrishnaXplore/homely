@@ -1,0 +1,81 @@
+---
+# ── Playbook: Deploy Prometheus + Grafana to Minikube ────────────
+# Uses Helm to install kube-prometheus-stack (Prometheus + Grafana).
+#
+# Run AFTER deploy.yml:
+#   ansible-playbook playbooks/monitoring.yml
+#
+# Access Grafana:
+#   minikube service monitoring-grafana -n monitoring
+#   Username: admin  |  Password: homely@grafana2026
+# ──────────────────────────────────────────────────────────────────
+
+- name: Deploy Prometheus + Grafana to Minikube
+  hosts: local
+  connection: local
+
+  vars:
+    project_root:     "{{ playbook_dir }}/../.."
+    monitoring_ns:    monitoring
+    helm_release:     monitoring
+    helm_bin:         /opt/homebrew/bin/helm
+
+  tasks:
+
+    # ── Namespace ─────────────────────────────────────────────────
+    - name: Apply monitoring namespace
+      shell: kubectl create namespace {{ monitoring_ns }} --dry-run=client -o yaml | kubectl apply -f -
+
+    # ── Helm repo ─────────────────────────────────────────────────
+    - name: Add Prometheus community Helm repo
+      command: "{{ helm_bin }} repo add prometheus-community https://prometheus-community.github.io/helm-charts"
+      changed_when: false
+
+    - name: Update Helm repos
+      command: "{{ helm_bin }} repo update"
+      changed_when: false
+
+    # ── Install kube-prometheus-stack ─────────────────────────────
+    - name: Install Prometheus + Grafana via Helm
+      command: >
+        {{ helm_bin }} upgrade --install {{ helm_release }}
+        prometheus-community/kube-prometheus-stack
+        --namespace {{ monitoring_ns }}
+        --values {{ project_root }}/k8s/monitoring/prometheus-grafana-values.yml
+        --wait
+        --timeout 5m
+      register: helm_result
+
+    - name: Print Helm result
+      debug:
+        msg: "{{ helm_result.stdout_lines }}"
+
+    # ── Wait for pods ─────────────────────────────────────────────
+    - name: Wait for Grafana pod to be ready
+      command: >
+        kubectl rollout status deployment/monitoring-grafana
+        -n {{ monitoring_ns }} --timeout=180s
+
+    - name: Wait for Prometheus pod to be ready
+      command: >
+        kubectl rollout status statefulset/prometheus-monitoring-kube-prometheus-prometheus
+        -n {{ monitoring_ns }} --timeout=180s
+
+    # ── Print access info ─────────────────────────────────────────
+    - name: Get all monitoring pods
+      command: kubectl get pods -n {{ monitoring_ns }}
+      register: pods
+      changed_when: false
+
+    - name: Print access info
+      debug:
+        msg:
+          - "✅ Prometheus + Grafana deployed!"
+          - "── Pods ──────────────────────────────────────"
+          - "{{ pods.stdout_lines }}"
+          - "── Access Commands ───────────────────────────"
+          - "Grafana    → minikube service monitoring-grafana -n monitoring"
+          - "Prometheus → kubectl port-forward svc/monitoring-kube-prometheus-prometheus 9090:9090 -n monitoring"
+          - "── Credentials ───────────────────────────────"
+          - "Username: admin"
+          - "Password: homely@grafana2026"

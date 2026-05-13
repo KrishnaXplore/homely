@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: homely-backend
+  namespace: homely
+spec:
+  selector:
+    app: homely-backend
+  ports:
+    - port: 5002
+      targetPort: 5002
+  type: ClusterIP

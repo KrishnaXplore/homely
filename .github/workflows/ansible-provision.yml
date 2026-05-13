@@ -1,0 +1,35 @@
+name: Ansible — Note (Minikube is Local)
+
+# ── NOTE ──────────────────────────────────────────────────────────
+# Ansible playbooks for this project run LOCALLY against Minikube.
+# They cannot run in GitHub Actions because Minikube runs on your
+# local machine, not on a remote server.
+#
+# To run locally:
+#   cd ansible
+#   ansible-playbook playbooks/setup-server.yml   # first time setup
+#   ansible-playbook playbooks/secrets.yml \
+#     -e "mongodb_uri='your_atlas_uri'" \
+#     -e "jwt_secret='your_secret'"
+#   ansible-playbook playbooks/deploy.yml          # deploy app
+# ──────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+
+jobs:
+  notice:
+    name: Ansible runs locally (Minikube)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print instructions
+        run: |
+          echo "=================================================="
+          echo " Ansible playbooks run on your LOCAL machine."
+          echo " Minikube is not accessible from GitHub Actions."
+          echo ""
+          echo " Run these commands locally:"
+          echo "   cd ansible"
+          echo "   ansible-playbook playbooks/setup-server.yml"
+          echo "   ansible-playbook playbooks/deploy.yml"
+          echo "=================================================="
