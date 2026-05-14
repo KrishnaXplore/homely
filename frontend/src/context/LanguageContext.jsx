@@ -2243,7 +2243,6 @@ const translations = {
             signInToContinue: 'ನಿಮ್ಮ ಆರೋಗ್ಯ ಪ್ರಯಾಣ ಮುಂದುವರಿಸಲು ಸೈನ್ ಇನ್ ಮಾಡಿ',
             loginTitle: 'ಮರಳಿ ಸ್ವಾಗತ',
             loginSubtitle: 'ನಿಮ್ಮ ಆರೋಗ್ಯ ಪ್ರಯಾಣ ಮುಂದುವರಿಸಲು ಸೈನ್ ಇನ್ ಮಾಡಿ',
-            signupTitle: 'ಹೋಮ್ಲಿಗೆ ಸೇರಿ',
             signupTitle: 'ಖಾತೆ ರಚಿಸಿ 🌿',
             signupSubtitle: 'ಇಂದು ನಿಮ್ಮ ನೈಸರ್ಗಿಕ ಆರೋಗ್ಯ ಪ್ರಯಾಣ ಪ್ರಾರಂಭಿಸಿ',
             email: 'ಇಮೇಲ್',
